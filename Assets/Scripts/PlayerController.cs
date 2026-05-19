@@ -1,21 +1,25 @@
 ﻿using UnityEngine;
 
+// Forțăm scriptul să folosească Debug-ul din Unity pentru a elimina erorile Ambiguous
+using Debug = UnityEngine.Debug;
+
 public class PlayerController : MonoBehaviour
 {
     private Vector3 startPoint;
     private Rigidbody rb;
     private LineRenderer lr;
+    private PionRand pionRand;
 
     [Header("Setari Putere")]
     public float forceMultiplier = 15f;
-    public float maxForce = 25f; // Limită pentru a nu zbura pionul prea tare
+    public float maxForce = 25f;
 
     void Start()
     {
         rb = GetComponent<Rigidbody>();
         lr = GetComponent<LineRenderer>();
+        pionRand = GetComponent<PionRand>();
 
-        // Initializam linia sa fie invizibila
         if (lr != null)
         {
             lr.positionCount = 0;
@@ -25,58 +29,62 @@ public class PlayerController : MonoBehaviour
 
     void OnMouseDown()
     {
-        // Salvam punctul de start al click-ului
+        if (pionRand != null && !pionRand.PotSaTrag())
+        {
+            Debug.Log("<color=yellow><b>[Meci]</b></color> Nu poți trage cu acest pion! Este rândul celeilalte echipe.");
+            return;
+        }
+
         startPoint = GetMouseWorldPos();
     }
 
     void OnMouseDrag()
     {
+        if (pionRand != null && !pionRand.PotSaTrag()) return;
+
         Vector3 currentPoint = GetMouseWorldPos();
 
         if (lr != null)
         {
             lr.positionCount = 2;
-            // Punctul 0 este intotdeauna pozitia actuala a pionului
             lr.SetPosition(0, transform.position);
 
-            // CALCULAM DIRECTIA IN FATA (Oglinda tragerii)
-            // Calculam vectorul dintre deget/mouse si pion
             Vector3 dragDirection = transform.position - currentPoint;
-
-            // Proiectam acest vector in fata pionului
             Vector3 forwardPoint = transform.position + dragDirection;
 
-            // Setam capatul liniei in fata, indicand directia de mers
             lr.SetPosition(1, forwardPoint);
         }
     }
 
     void OnMouseUp()
     {
-        // Ascundem linia cand ridicam degetul
+        if (pionRand != null && !pionRand.PotSaTrag()) return;
+
         if (lr != null) lr.positionCount = 0;
 
         Vector3 endPoint = GetMouseWorldPos();
-
-        // Calculam forța bazată pe cât de mult am tras înapoi
         Vector3 forceDirection = transform.position - endPoint;
         float magnitude = forceDirection.magnitude;
 
-        // Aplicăm forța de impuls
+        if (magnitude < 0.1f) return;
+
         Vector3 finalForce = forceDirection.normalized * magnitude * forceMultiplier;
 
-        // Limităm forța maximă pentru control mai bun
         if (finalForce.magnitude > maxForce)
         {
             finalForce = finalForce.normalized * maxForce;
         }
 
         rb.AddForce(finalForce, ForceMode.Impulse);
+
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.SchimbaRandul();
+        }
     }
 
     private Vector3 GetMouseWorldPos()
     {
-        // Metoda sigura pentru Unity 6 si Input System "Both"
         Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
         Plane plane = new Plane(Vector3.up, transform.position);
 
