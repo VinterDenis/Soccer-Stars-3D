@@ -4,7 +4,7 @@ using System.Collections.Generic;
 public class DetectorGol : MonoBehaviour
 {
     [Header("Configurare Poartă (Bifă Simplă)")]
-    [Tooltip("Bifează doar dacă în această poartă trebuie să înceapă echipa ALBASTRĂ după gol.")]
+    [Tooltip("Bifează doar dacă în această poartă trebuie să înceapă echipa BLUE (Albastră) după gol.")]
     public bool estePoartaAlbastra;
 
     public Vector3 pozitieCentruMinge = new Vector3(0, 0.5f, 0);
@@ -35,19 +35,18 @@ public class DetectorGol : MonoBehaviour
     {
         if (other.gameObject.name == "Minge" || other.CompareTag("Minge"))
         {
-            // 1. Resetăm arena fizic (pionii la loc, viteza zero)
             ResetareToataArena();
 
-            // 2. Trimitem informația direct către GameManager folosind funcția lui stabilizată
             if (GameManager.Instance != null)
             {
+                // Trimitem numele în engleză conform setărilor din GameManager
                 if (estePoartaAlbastra)
                 {
-                    GameManager.Instance.MarcatGolInPoarta("Albastru");
+                    GameManager.Instance.MarcatGolInPoarta("Blue");
                 }
                 else
                 {
-                    GameManager.Instance.MarcatGolInPoarta("Rosu");
+                    GameManager.Instance.MarcatGolInPoarta("Red");
                 }
             }
         }

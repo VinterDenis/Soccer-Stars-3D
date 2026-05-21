@@ -1,20 +1,32 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
+using TMPro; // Obligatoriu pentru TextMeshPro
 
 using Debug = UnityEngine.Debug;
 using Random = UnityEngine.Random;
-using Object = UnityEngine.Object;
 
 public class GameManager : MonoBehaviour
 {
     public static GameManager Instance;
 
-    [Header("Setări Rând")]
-    public string randulEchipei; // "Rosu" sau "Albastru"
+    [Header("Sistem de Meniu Start")]
+    public GameObject panouMeniu; // Trage aici obiectul Panou_Meniu
 
-    [Header("Setări Resetare Gol")]
+    [Header("Setări Rând")]
+    public string randulEchipei; // "Red" sau "Blue"
+
+    [Header("Setări Resetare Minge")]
     public Transform pozitieCentruMinge;
     private Rigidbody rbMinge;
+
+    [Header("Sistem de Scor & UI")]
+    public TextMeshProUGUI textScor; // Trage aici textul pentru scor (ex: "Blue 0 - 0 Red")
+    public GameObject panouFinalMeci; // Trage aici panoul cu "Match Over"
+    public TextMeshProUGUI textCastigator; // Trage aici textul din interiorul panoului (ex: "Red Wins!")
+
+    private int scorRed = 0;
+    private int scorBlue = 0;
+    private bool meciTerminat = false;
 
     private List<PionRand> totiPionii = new List<PionRand>();
 
@@ -27,17 +39,43 @@ public class GameManager : MonoBehaviour
     void Start()
     {
         GameObject minge = GameObject.Find("Minge");
+        if (minge != null) rbMinge = minge.GetComponent<Rigidbody>();
 
-        if (minge != null)
+        if (panouFinalMeci != null) panouFinalMeci.SetActive(false); // Ascundem panoul final la început
+        ActualizeazaTextScor();
+
+        // INTEGRARE MENIU START:
+        if (panouMeniu != null)
         {
-            rbMinge = minge.GetComponent<Rigidbody>();
+            panouMeniu.SetActive(true); // Afișăm meniul principal
+            if (textScor != null) textScor.gameObject.SetActive(false); // Ascundem tabela de scor în meniu
+            Time.timeScale = 0f; // Înghețăm jocul fizic în fundal
         }
         else
         {
-            Debug.LogError("<color=red><b>[EROARE]</b></color> Nu am găsit niciun obiect numit exact 'Minge' în Hierarchy!");
+            Time.timeScale = 1f;
+            PornireMeci();
+        }
+    }
+
+    /// <summary>
+    /// Funcție publică legată de evenimentul On Click() al butonului tău START GAME
+    /// </summary>
+    public void IncepeJocul()
+    {
+        if (panouMeniu != null)
+        {
+            panouMeniu.SetActive(false); // Închidem meniul de start
         }
 
-        Invoke("PornireMeci", 0.1f);
+        if (textScor != null)
+        {
+            textScor.gameObject.SetActive(true); // Afișăm tabela de scor când meciul începe efectiv
+        }
+
+        Time.timeScale = 1f; // Dezghețăm timpul în Unity pentru a porni fizica
+        PornireMeci(); // Rulăm inițializarea pionilor și a rândului
+        Debug.Log("<color=green><b>[JOC PORNIT]</b></color> Meciul a început oficial!");
     }
 
     void PornireMeci()
@@ -46,42 +84,102 @@ public class GameManager : MonoBehaviour
         PionRand[] pioniGasiti = GameObject.FindObjectsByType<PionRand>(FindObjectsSortMode.None);
         totiPionii.AddRange(pioniGasiti);
 
-        Debug.Log("<color=yellow><b>[DETECTIV]</b></color> Am găsit " + totiPionii.Count + " pioni pe teren.");
+        // Actualizăm direct echipa pionilor în scripturile lor din română în engleză
+        foreach (PionRand pion in totiPionii)
+        {
+            if (pion != null)
+            {
+                if (pion.echipaPion == "Rosu" || pion.echipaPion == "Rosie") pion.echipaPion = "Red";
+                if (pion.echipaPion == "Albastru" || pion.echipaPion == "Albastra") pion.echipaPion = "Blue";
+            }
+        }
 
-        randulEchipei = (Random.value > 0.5f) ? "Rosu" : "Albastru";
-
-        string culoareHex = (randulEchipei == "Rosu") ? "red" : "cyan";
-        Debug.Log("Meciul a început! Începe echipa: <color=" + culoareHex + "><b>" + randulEchipei + "</b></color>");
-
-        ActualizeazaLuminileTerenului();
+        if (!meciTerminat)
+        {
+            randulEchipei = (Random.value > 0.5f) ? "Red" : "Blue";
+            ActualizeazaLuminileTerenului();
+        }
     }
 
     public void SchimbaRandul()
     {
-        randulEchipei = (randulEchipei == "Rosu") ? "Albastru" : "Rosu";
+        if (meciTerminat) return;
 
-        string culoareHex = (randulEchipei == "Rosu") ? "red" : "cyan";
-        Debug.Log("S-a schimbat rândul! Acum este rândul echipei: <color=" + culoareHex + "><b>" + randulEchipei + "</b></color>");
-
+        randulEchipei = (randulEchipei == "Red") ? "Blue" : "Red";
         ActualizeazaLuminileTerenului();
     }
 
-    // REGULA STRICTĂ DE GOL/AUTOGOL
     public void MarcatGolInPoarta(string echipaPoarta)
     {
-        if (echipaPoarta == "Rosu")
+        if (meciTerminat) return;
+
+        // Dacă s-a marcat în poarta Red -> Punctează Blue
+        // Dacă s-a marcat în poarta Blue -> Punctează Red
+        if (echipaPoarta == "Red")
         {
-            randulEchipei = "Rosu";
-            Debug.Log("<color=red><b>[GOL / AUTOGOL]</b></color> S-a marcat în poarta Roșie. Echipa Roșie începe de la centru!");
+            scorBlue++;
+            randulEchipei = "Red"; // Repune Red din centru
+            Debug.Log("<color=cyan><b>[GOAL!]</b></color> Blue scored! Red restarts from center.");
         }
-        else if (echipaPoarta == "Albastru")
+        else if (echipaPoarta == "Blue")
         {
-            randulEchipei = "Albastru";
-            Debug.Log("<color=cyan><b>[GOL / AUTOGOL]</b></color> S-a marcat în poarta Albastră. Echipa Albastră începe de la centru!");
+            scorRed++;
+            randulEchipei = "Blue"; // Repune Blue din centru
+            Debug.Log("<color=red><b>[GOAL!]</b></color> Red scored! Blue restarts from center.");
         }
 
+        ActualizeazaTextScor();
         ResetarePozitieMinge();
-        ActualizeazaLuminileTerenului();
+
+        // Verificăm limita de 2 goluri stabilită
+        if (scorRed >= 2)
+        {
+            TerminaMeciul("Red Wins!");
+        }
+        else if (scorBlue >= 2)
+        {
+            TerminaMeciul("Blue Wins!");
+        }
+        else
+        {
+            ActualizeazaLuminileTerenului();
+        }
+    }
+
+    void ActualizeazaTextScor()
+    {
+        if (textScor != null)
+        {
+            // Păstrăm ordinea dorită: Blue în stânga, Red în dreapta
+            textScor.text = "Blue " + scorBlue + " - " + scorRed + " Red";
+
+            // Forțăm interfața să se redeseneze instant
+            textScor.ForceMeshUpdate();
+        }
+    }
+
+    void TerminaMeciul(string mesajCastigator)
+    {
+        meciTerminat = true;
+
+        // Stingem toate luminile de pe teren
+        foreach (PionRand pion in totiPionii)
+        {
+            if (pion != null) pion.SetActiveRand(false);
+        }
+
+        // Oprim fizica mingii complet
+        if (rbMinge != null)
+        {
+            rbMinge.linearVelocity = Vector3.zero;
+            rbMinge.angularVelocity = Vector3.zero;
+        }
+
+        // Afișăm panoul de final de meci și textul aferent
+        if (panouFinalMeci != null) panouFinalMeci.SetActive(true);
+        if (textCastigator != null) textCastigator.text = mesajCastigator;
+
+        Debug.Log("<color=yellow><b>[MATCH OVER]</b></color> " + mesajCastigator);
     }
 
     private void ResetarePozitieMinge()
@@ -90,21 +188,15 @@ public class GameManager : MonoBehaviour
         {
             rbMinge.linearVelocity = Vector3.zero;
             rbMinge.angularVelocity = Vector3.zero;
-
-            if (pozitieCentruMinge != null)
-            {
-                rbMinge.transform.position = pozitieCentruMinge.position;
-            }
-            else
-            {
-                rbMinge.transform.position = new Vector3(0f, 0.5f, 0f);
-            }
+            if (pozitieCentruMinge != null) rbMinge.transform.position = pozitieCentruMinge.position;
+            else rbMinge.transform.position = new Vector3(0f, 0.5f, 0f);
         }
     }
 
     public void ActualizeazaLuminileTerenului()
     {
-        int luminiAprinse = 0;
+        if (meciTerminat) return;
+
         foreach (PionRand pion in totiPionii)
         {
             if (pion != null)
@@ -112,7 +204,6 @@ public class GameManager : MonoBehaviour
                 if (pion.echipaPion == randulEchipei)
                 {
                     pion.SetActiveRand(true);
-                    luminiAprinse++;
                 }
                 else
                 {
@@ -120,6 +211,5 @@ public class GameManager : MonoBehaviour
                 }
             }
         }
-        Debug.Log("<color=orange><b>[LUMINI]</b></color> Am actualizat terenul. Lumini aprinse acum: " + luminiAprinse);
     }
 }
