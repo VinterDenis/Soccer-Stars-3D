@@ -22,8 +22,10 @@ public class GameManager : MonoBehaviour
 
     [Header("Sistem de Scor & UI")]
     public TextMeshProUGUI textScor; // Trage aici textul pentru scor (ex: "Blue 0 - 0 Red")
-    public GameObject panouFinalMeci; // Trage aici obiectul Panou_Final duplicat
-    public TextMeshProUGUI textCastigator; // Trage aici textul de titlu din Panou_Final (ex: "BLUE WINS!")
+
+    [Header("Panouri UI Final (Neon)")]
+    public GameObject panouFinalBlueWins; // Trage aici obiectul Panou_Final_Blue din Hierarchy
+    public GameObject panouFinalRedWins;  // Trage aici obiectul Panou_Final_Red din Hierarchy
 
     [Header("Imagini UI Gol")]
     public GameObject imagineGolAlbastru; // Trage aici imaginea cu textul albastru din Canvas
@@ -50,7 +52,9 @@ public class GameManager : MonoBehaviour
         GameObject minge = GameObject.Find("Minge");
         if (minge != null) rbMinge = minge.GetComponent<Rigidbody>();
 
-        if (panouFinalMeci != null) panouFinalMeci.SetActive(false); // Ascundem panoul final la început
+        // Ascundem ambele panouri finale la început
+        if (panouFinalBlueWins != null) panouFinalBlueWins.SetActive(false);
+        if (panouFinalRedWins != null) panouFinalRedWins.SetActive(false);
 
         // Ne asigurăm că ambele imagini de gol sunt stinse la început
         if (imagineGolAlbastru != null) imagineGolAlbastru.SetActive(false);
@@ -202,15 +206,24 @@ public class GameManager : MonoBehaviour
             rbMinge.angularVelocity = Vector3.zero;
         }
 
-        if (panouFinalMeci != null) panouFinalMeci.SetActive(true); // Afișăm ecranul final clonat
-        if (textCastigator != null) textCastigator.text = mesajCastigator; // "BLUE WINS!" sau "RED WINS!"
+        // APRINDEM PANOUL CORECT ÎN FUNCȚIE DE CINE A CÂȘTIGAT
+        if (mesajCastigator == "BLUE WINS!")
+        {
+            if (panouFinalBlueWins != null) panouFinalBlueWins.SetActive(true);
+            if (panouFinalRedWins != null) panouFinalRedWins.SetActive(false);
+        }
+        else if (mesajCastigator == "RED WINS!")
+        {
+            if (panouFinalRedWins != null) panouFinalRedWins.SetActive(true);
+            if (panouFinalBlueWins != null) panouFinalBlueWins.SetActive(false);
+        }
 
         Debug.Log("<color=yellow><b>[MATCH OVER]</b></color> " + mesajCastigator);
     }
 
     // --- LOGICĂ BUTOANE INTERFAȚĂ FINALĂ ---
 
-    // Atașează funcția asta pe butonul "REMATCH"
+
     public void Rematch()
     {
         meciTerminat = false;
@@ -218,15 +231,16 @@ public class GameManager : MonoBehaviour
         scorBlue = 0;
         ActualizeazaTextScor();
 
-        if (panouFinalMeci != null) panouFinalMeci.SetActive(false); // Închidem panoul de final
 
-        Time.timeScale = 1f; // Dezghețăm timpul pentru noul meci
+        if (panouFinalBlueWins != null) panouFinalBlueWins.SetActive(false);
+        if (panouFinalRedWins != null) panouFinalRedWins.SetActive(false);
+
+        Time.timeScale = 1f; 
         ResetarePozitieMinge();
         PornireMeci();
         Debug.Log("<color=orange><b>[REMATCH]</b></color> Jocul a fost repornit!");
     }
 
-    // Atașează funcția asta pe butonul "EXIT GAME"
     public void ExitToMenu()
     {
         Debug.Log("<color=red><b>[EXIT]</b></color> Jocul se închide...");
