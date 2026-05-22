@@ -39,7 +39,10 @@ public class DetectorGol : MonoBehaviour
 
             if (GameManager.Instance != null)
             {
-                // Trimitem numele în engleză conform setărilor din GameManager
+                // CORECTURĂ LOGICĂ:
+                // Dacă mingea intră în poarta echipei Albastre (estePoartaAlbastra == true):
+                // Înseamnă că a marcat echipa ROȘIE -> de aceea anunțăm GameManager-ul că poarta afectată este "Blue", 
+                // iar GameManager va oferi punctul lui Red și va aprinde corect textul ROȘU.
                 if (estePoartaAlbastra)
                 {
                     GameManager.Instance.MarcatGolInPoarta("Blue");

@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
 using TMPro; // Obligatoriu pentru TextMeshPro
+using System.Collections; // Obligatoriu pentru a putea folosi IEnumerator (rutine)
 
 using Debug = UnityEngine.Debug;
 using Random = UnityEngine.Random;
@@ -24,6 +25,10 @@ public class GameManager : MonoBehaviour
     public GameObject panouFinalMeci; // Trage aici panoul cu "Match Over"
     public TextMeshProUGUI textCastigator; // Trage aici textul din interiorul panoului (ex: "Red Wins!")
 
+    [Header("Imagini UI Gol")]
+    public GameObject imagineGolAlbastru; // Trage aici imaginea cu textul albastru din Canvas
+    public GameObject imagineGolRosu;     // Trage aici imaginea cu textul roșu din Canvas
+
     private int scorRed = 0;
     private int scorBlue = 0;
     private bool meciTerminat = false;
@@ -42,6 +47,11 @@ public class GameManager : MonoBehaviour
         if (minge != null) rbMinge = minge.GetComponent<Rigidbody>();
 
         if (panouFinalMeci != null) panouFinalMeci.SetActive(false); // Ascundem panoul final la început
+
+        // Ne asigurăm că ambele imagini sunt stinse la începutul meciului
+        if (imagineGolAlbastru != null) imagineGolAlbastru.SetActive(false);
+        if (imagineGolRosu != null) imagineGolRosu.SetActive(false);
+
         ActualizeazaTextScor();
 
         // INTEGRARE MENIU START:
@@ -58,9 +68,6 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Funcție publică legată de evenimentul On Click() al butonului tău START GAME
-    /// </summary>
     public void IncepeJocul()
     {
         if (panouMeniu != null)
@@ -84,7 +91,6 @@ public class GameManager : MonoBehaviour
         PionRand[] pioniGasiti = GameObject.FindObjectsByType<PionRand>(FindObjectsSortMode.None);
         totiPionii.AddRange(pioniGasiti);
 
-        // Actualizăm direct echipa pionilor în scripturile lor din română în engleză
         foreach (PionRand pion in totiPionii)
         {
             if (pion != null)
@@ -113,25 +119,30 @@ public class GameManager : MonoBehaviour
     {
         if (meciTerminat) return;
 
-        // Dacă s-a marcat în poarta Red -> Punctează Blue
-        // Dacă s-a marcat în poarta Blue -> Punctează Red
+        // Dacă s-a marcat în poarta Red -> Punctează Blue -> Arătăm textul ALBASTRU
         if (echipaPoarta == "Red")
         {
             scorBlue++;
             randulEchipei = "Red"; // Repune Red din centru
             Debug.Log("<color=cyan><b>[GOAL!]</b></color> Blue scored! Red restarts from center.");
+
+            // Pornim afișarea textului albastru
+            StartCoroutine(AfiseazaImagineGol(imagineGolAlbastru));
         }
+        // Dacă s-a marcat în poarta Blue -> Punctează Red -> Arătăm textul ROȘU
         else if (echipaPoarta == "Blue")
         {
             scorRed++;
             randulEchipei = "Blue"; // Repune Blue din centru
             Debug.Log("<color=red><b>[GOAL!]</b></color> Red scored! Blue restarts from center.");
+
+            // Pornim afișarea textului roșu
+            StartCoroutine(AfiseazaImagineGol(imagineGolRosu));
         }
 
         ActualizeazaTextScor();
         ResetarePozitieMinge();
 
-        // Verificăm limita de 2 goluri stabilită
         if (scorRed >= 2)
         {
             TerminaMeciul("Red Wins!");
@@ -146,14 +157,25 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    // Rutina care aprinde imaginea corectă și o stinge după 2 secunde reale
+    private IEnumerator AfiseazaImagineGol(GameObject imagineDeAfisat)
+    {
+        if (imagineDeAfisat != null)
+        {
+            imagineDeAfisat.SetActive(true); // Aprinde imaginea pe ecran
+
+            // Folosim WaitForSecondsRealtime ca să nu fie afectat de Time.timeScale = 0
+            yield return new WaitForSecondsRealtime(2.0f);
+
+            imagineDeAfisat.SetActive(false); // Stinge imaginea
+        }
+    }
+
     void ActualizeazaTextScor()
     {
         if (textScor != null)
         {
-            // Păstrăm ordinea dorită: Blue în stânga, Red în dreapta
             textScor.text = "Blue " + scorBlue + " - " + scorRed + " Red";
-
-            // Forțăm interfața să se redeseneze instant
             textScor.ForceMeshUpdate();
         }
     }
@@ -162,20 +184,17 @@ public class GameManager : MonoBehaviour
     {
         meciTerminat = true;
 
-        // Stingem toate luminile de pe teren
         foreach (PionRand pion in totiPionii)
         {
             if (pion != null) pion.SetActiveRand(false);
         }
 
-        // Oprim fizica mingii complet
         if (rbMinge != null)
         {
             rbMinge.linearVelocity = Vector3.zero;
             rbMinge.angularVelocity = Vector3.zero;
         }
 
-        // Afișăm panoul de final de meci și textul aferent
         if (panouFinalMeci != null) panouFinalMeci.SetActive(true);
         if (textCastigator != null) textCastigator.text = mesajCastigator;
 
