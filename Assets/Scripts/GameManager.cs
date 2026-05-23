@@ -29,7 +29,7 @@ public class GameManager : MonoBehaviour
 
     [Header("Imagini UI Gol")]
     public GameObject imagineGolAlbastru; // Trage aici imaginea cu textul albastru din Canvas
-    public GameObject imagineGolRosu;     // Trage aici imaginea cu textul roșu din Canvas
+    public GameObject imagineGolRosu;      // Trage aici imaginea cu textul roșu din Canvas
 
     [Header("Sistem Audio")]
     public AudioSource sursaAudio; // Trage aici obiectul _GameManager (care are componenta AudioSource)
@@ -144,19 +144,33 @@ public class GameManager : MonoBehaviour
             scorBlue++;
             randulEchipei = "Red";
             Debug.Log("<color=cyan><b>[GOAL!]</b></color> Blue scored! Red restarts from center.");
-            StartCoroutine(AfiseazaImagineGol(imagineGolAlbastru));
+            StartCoroutine(AfiseazaImagineGol(imagineGolAlbastru, "BLUE WINS!"));
         }
         else if (echipaPoarta == "Blue")
         {
             scorRed++;
             randulEchipei = "Blue";
             Debug.Log("<color=red><b>[GOAL!]</b></color> Red scored! Blue restarts from center.");
-            StartCoroutine(AfiseazaImagineGol(imagineGolRosu));
+            StartCoroutine(AfiseazaImagineGol(imagineGolRosu, "RED WINS!"));
         }
 
         ActualizeazaTextScor();
         ResetarePozitieMinge();
+    }
 
+    private IEnumerator AfiseazaImagineGol(GameObject imagineDeAfisat, string posibilCastigator)
+    {
+        if (imagineDeAfisat != null)
+        {
+            imagineDeAfisat.SetActive(true);
+
+            // Textul de gol și sunetul rulează timp de 2 secunde reale
+            yield return new WaitForSecondsRealtime(2.0f);
+
+            imagineDeAfisat.SetActive(false);
+        }
+
+        // După ce textul GOAL dispare, verificăm dacă s-a atins scorul de final
         if (scorRed >= 2)
         {
             TerminaMeciul("RED WINS!");
@@ -167,17 +181,8 @@ public class GameManager : MonoBehaviour
         }
         else
         {
+            // Dacă nu e gata meciul, jocul continuă normal
             ActualizeazaLuminileTerenului();
-        }
-    }
-
-    private IEnumerator AfiseazaImagineGol(GameObject imagineDeAfisat)
-    {
-        if (imagineDeAfisat != null)
-        {
-            imagineDeAfisat.SetActive(true);
-            yield return new WaitForSecondsRealtime(2.0f);
-            imagineDeAfisat.SetActive(false);
         }
     }
 
@@ -223,7 +228,6 @@ public class GameManager : MonoBehaviour
 
     // --- LOGICĂ BUTOANE INTERFAȚĂ FINALĂ ---
 
-
     public void Rematch()
     {
         meciTerminat = false;
@@ -231,11 +235,10 @@ public class GameManager : MonoBehaviour
         scorBlue = 0;
         ActualizeazaTextScor();
 
-
         if (panouFinalBlueWins != null) panouFinalBlueWins.SetActive(false);
         if (panouFinalRedWins != null) panouFinalRedWins.SetActive(false);
 
-        Time.timeScale = 1f; 
+        Time.timeScale = 1f;
         ResetarePozitieMinge();
         PornireMeci();
         Debug.Log("<color=orange><b>[REMATCH]</b></color> Jocul a fost repornit!");
